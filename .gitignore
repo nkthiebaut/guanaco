@@ -1,0 +1,8 @@
+.ipynb_checkpoints
+Untitled.ipynb
+
+*.egg-info/
+
+.vscode
+
+.DS_Store
