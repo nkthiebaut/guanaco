@@ -4,3 +4,8 @@
 [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/nkthiebaut/guanaco)
 
 Home of the LLM and MLOps course (MSDS 631-02 - University of San Francisco).
+
+## Ray setup
+
+- AWS Setup: https://docs.ray.io/en/latest/cluster/vms/user-guides/launching-clusters/aws.html
+- Getting started with Torch Lightning distributed: https://docs.ray.io/en/latest/train/getting-started-pytorch-lightning.html
