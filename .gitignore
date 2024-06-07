@@ -6,3 +6,4 @@ Untitled.ipynb
 .vscode
 
 .DS_Store
+*lightning_logs*

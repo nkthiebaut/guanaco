@@ -1,0 +1,111 @@
+# An unique identifier for the head node and workers of this cluster.
+cluster_name: default
+
+max_workers: 2
+
+upscaling_speed: 1.0
+
+
+docker:
+  image: "rayproject/ray-ml:latest-cpu"
+  container_name: "ray_container"
+  pull_before_run: True
+  run_options:
+    - --ulimit nofile=65536:65536
+
+idle_timeout_minutes: 5
+
+provider:
+    type: gcp
+    region: us-west1
+    availability_zone: us-west1-a
+    project_id: msds-631-02 # Replace with your project ID
+
+auth:
+    ssh_user: ubuntu
+
+available_node_types:
+    ray_head_default:
+        resources: {"CPU": 2}
+        node_config:
+            machineType: n1-standard-2
+            disks:
+              - boot: true
+                autoDelete: true
+                type: PERSISTENT
+                initializeParams:
+                  diskSizeGb: 50
+                  # See https://cloud.google.com/compute/docs/images for more images
+                  sourceImage: projects/deeplearning-platform-release/global/images/family/common-cpu
+
+    ray_worker_small:
+        min_workers: 1
+        max_workers: 2
+        resources: {"CPU": 2}
+        node_config:
+            machineType: n1-standard-2
+            disks:
+              - boot: true
+                autoDelete: true
+                type: PERSISTENT
+                initializeParams:
+                  diskSizeGb: 50
+                  # See https://cloud.google.com/compute/docs/images for more images
+                  sourceImage: projects/deeplearning-platform-release/global/images/family/common-cpu
+            # Run workers on preemtible instance by default.
+            # Comment this out to use on-demand.
+            scheduling:
+              - preemptible: true
+            
+head_node_type: ray_head_default
+
+# Files or directories to copy to the head and worker nodes. The format is a
+# dictionary from REMOTE_PATH: LOCAL_PATH, e.g.
+file_mounts: {
+#    "/path1/on/remote/machine": "/path1/on/local/machine",
+#    "/path2/on/remote/machine": "/path2/on/local/machine",
+}
+
+# Files or directories to copy from the head node to the worker nodes. The format is a
+# list of paths. The same path on the head node will be copied to the worker node.
+# This behavior is a subset of the file_mounts behavior. In the vast majority of cases
+# you should just use file_mounts. Only use this if you know what you're doing!
+cluster_synced_files: []
+
+file_mounts_sync_continuously: False
+
+rsync_exclude:
+    - "**/.git"
+    - "**/.git/**"
+
+rsync_filter:
+    - ".gitignore"
+
+initialization_commands: []
+
+setup_commands: []
+
+head_setup_commands: [
+  "pip install google-api-python-client==1.7.8",
+  "pip install lightning"
+]
+
+worker_setup_commands: [
+  "pip install lightning",
+]
+
+head_start_ray_commands:
+    - ray stop
+    - >-
+      ray start
+      --head
+      --port=6379
+      --object-manager-port=8076
+      --autoscaling-config=~/ray_bootstrap_config.yaml
+
+worker_start_ray_commands:
+    - ray stop
+    - >-
+      ray start
+      --address=$RAY_HEAD_IP:6379
+      --object-manager-port=8076
