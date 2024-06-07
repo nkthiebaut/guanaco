@@ -18,7 +18,7 @@ dataset.set_format(type="torch", columns=["text"])
 
 
 context_length = 128
-batch_size = 1024
+batch_size = 64
 
 
 def tokenize(text: str) -> list[int]:
@@ -42,16 +42,15 @@ train_dataloader = DataLoader(
     batch_size=batch_size,
     shuffle=True,
     collate_fn=collate_fn,
-    num_workers=4,
+    num_workers=4 if torch.cuda.is_available() else 0,
+    persistent_workers=bool(torch.cuda.is_available()),
     pin_memory=True,
-    persistent_workers=True,
 )
 val_dataloader = DataLoader(
     dataset["validation"],
     batch_size=batch_size,
     shuffle=False,
     collate_fn=collate_fn,
-    num_workers=4,
 )
 print(f"Data sample from dataloader: {next(iter(train_dataloader))[0]}")
 
@@ -175,7 +174,7 @@ class Guanaco(nn.Module):
 
     def forward(self, token_ids):
         lookback = self.max_len
-        token_ids = token_ids[:, -lookback:]
+        token_ids = token_ids[:, -lookback:].to(torch.long)
         B, T = token_ids.shape
 
         complex_rotations = self.complex_rotations[:T, :]
