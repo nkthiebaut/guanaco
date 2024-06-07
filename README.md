@@ -7,5 +7,6 @@ Home of the LLM and MLOps course (MSDS 631-02 - University of San Francisco).
 
 ## Ray setup
 
+- GCP Setup: https://docs.ray.io/en/latest/cluster/vms/user-guides/launching-clusters/gcp.html
 - AWS Setup: https://docs.ray.io/en/latest/cluster/vms/user-guides/launching-clusters/aws.html
 - Getting started with Torch Lightning distributed: https://docs.ray.io/en/latest/train/getting-started-pytorch-lightning.html
