@@ -147,7 +147,7 @@ class MultiHeadSelfAttentionBlock(nn.Module):
 
         self.att_norm = RMSNorm(emb_dim)
         self.heads = nn.ModuleList(
-            [SelfAttention(emb_dim, self.head_dim, dropout)] * n_heads
+            [SelfAttention(emb_dim, self.head_dim, dropout) for _ in range(n_heads)]
         )
         self.projection = nn.Linear(emb_dim, emb_dim)
 
@@ -183,7 +183,10 @@ class Guanaco(nn.Module):
         self.max_len = max_len
 
         self.blocks = nn.ModuleList(
-            [MultiHeadSelfAttentionBlock(emb_dim, n_heads, dropout)] * n_layers
+            [
+                MultiHeadSelfAttentionBlock(emb_dim, n_heads, dropout)
+                for _ in range(n_layers)
+            ]
         )
 
         self.output_norm = RMSNorm(emb_dim)
