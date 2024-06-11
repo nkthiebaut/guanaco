@@ -90,11 +90,11 @@ setup_commands: []
 
 head_setup_commands: [
   "pip install google-api-python-client==1.7.8",
-  "pip install lightning"
+  "pip install lightning einops"
 ]
 
 worker_setup_commands: [
-  "pip install lightning",
+  "pip install lightning einops",
 ]
 
 head_start_ray_commands:

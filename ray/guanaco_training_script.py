@@ -10,8 +10,12 @@ import torch.nn.functional as F
 from einops import rearrange, reduce
 import lightning as L
 
-
-device = "cuda" if torch.cuda.is_available() else "cpu"
+device = "cpu"
+if torch.cuda.is_available():
+    device = "cuda"
+elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+    device = "mps"
+print(f"using device: {device}")
 
 dataset = load_dataset("roneneldan/TinyStories")
 dataset.set_format(type="torch", columns=["text"])
@@ -164,6 +168,8 @@ class MultiHeadSelfAttentionBlock(nn.Module):
         x = x + x_ffn
 
         x = self.dropout(x)
+
+        x = self.projection(x)
         return x
 
 
