@@ -285,8 +285,8 @@ scaling_config = ray.train.ScalingConfig(num_workers=2, use_gpu=False)
 trainer = TorchTrainer(
     train_func,
     scaling_config=scaling_config,
-    # run_config=ray.train.RunConfig(
-    #     storage_path="gs://model-repo-msds-631-02/guanaco-runs"
-    # ),
+    run_config=ray.train.RunConfig(
+        storage_path="gs://model-repo-msds-631-02/guanaco-runs"
+    ),
 )
 result: ray.train.Result = trainer.fit()

@@ -1,5 +1,7 @@
 fastapi==0.103.0
 loguru==0.7.0
 pydantic==2.3.0
+ray[serve]
+starlette==0.37.2
 transformers==4.32.1
 uvicorn==0.23.2
