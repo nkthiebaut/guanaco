@@ -1,7 +1,7 @@
 # An unique identifier for the head node and workers of this cluster.
 cluster_name: default
 
-max_workers: 2
+max_workers: 3
 
 upscaling_speed: 1.0
 
@@ -40,8 +40,8 @@ available_node_types:
 
     ray_worker_small:
         min_workers: 1
-        max_workers: 2
-        resources: {"CPU": 2}
+        max_workers: 3
+        resources: {"CPU": 3}
         node_config:
             machineType: n1-standard-2
             disks:
@@ -56,7 +56,10 @@ available_node_types:
             # Comment this out to use on-demand.
             scheduling:
               - preemptible: true
-            
+            serviceAccounts:
+              - email: ray-autoscaler-sa-v1@msds-631-02.iam.gserviceaccount.com
+                scopes:
+                  - https://www.googleapis.com/auth/cloud-platform
 head_node_type: ray_head_default
 
 # Files or directories to copy to the head and worker nodes. The format is a

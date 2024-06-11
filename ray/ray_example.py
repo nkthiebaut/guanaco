@@ -43,13 +43,17 @@ def train_func():
     train_data = FashionMNIST(
         root=data_dir, train=True, download=True, transform=transform
     )
-    train_dataloader = DataLoader(train_data, batch_size=128, shuffle=True)
+    train_dataloader = DataLoader(
+        train_data,
+        batch_size=128,
+        shuffle=True,
+    )
 
     # Training
     model = ImageClassifier()
     # [1] Configure PyTorch Lightning Trainer.
     trainer = pl.Trainer(
-        max_epochs=10,
+        max_epochs=1,
         devices="auto",
         accelerator="cpu",
         strategy=ray.train.lightning.RayDDPStrategy(),
@@ -58,6 +62,7 @@ def train_func():
         # [1a] Optionally, disable the default checkpointing behavior
         # in favor of the `RayTrainReportCallback` above.
         enable_checkpointing=False,
+        overfit_batches=0.01,
     )
     trainer = ray.train.lightning.prepare_trainer(trainer)
     trainer.fit(model, train_dataloaders=train_dataloader)
@@ -73,7 +78,9 @@ trainer = TorchTrainer(
     # [3a] If running in a multi-node cluster, this is where you
     # should configure the run's persistent storage that is accessible
     # across all worker nodes.
-    # run_config=ray.train.RunConfig(storage_path="s3://..."),
+    run_config=ray.train.RunConfig(
+        storage_path="gs://model-repo-msds-631-02/model-test"
+    ),
 )
 result: ray.train.Result = trainer.fit()
 

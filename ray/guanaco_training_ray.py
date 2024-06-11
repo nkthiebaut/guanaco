@@ -11,7 +11,14 @@ from einops import rearrange, reduce
 import lightning as L
 
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
+if torch.cuda.is_available():
+    device = "cuda"
+elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+    device = "mps"
+else:
+    device = "cpu"
+print(f"using device: {device}")
+
 
 dataset = load_dataset("roneneldan/TinyStories")
 dataset.set_format(type="torch", columns=["text"])
@@ -258,7 +265,7 @@ trainer = L.Trainer(max_epochs=2, devices=1)
 trainer.fit(model, train_dataloader, val_dataloader)
 
 
-def generate(model, x: str, n_tokens: int = 5, device="cuda"):
+def generate(model, x: str, n_tokens: int = 5, device=device):
     """Predict next token with greedy decoding."""
     x = torch.tensor(tokenize(x)).unsqueeze(0)
     x = x.to(device)
