@@ -1,7 +1,8 @@
-import requests
 from fastapi import FastAPI
 from ray import serve
-from loguru import logger
+import logging
+
+# logger = logging.getLogger("ray.serve")
 
 app = FastAPI()
 
@@ -11,14 +12,15 @@ app = FastAPI()
 class FastAPIDeployment:
     @app.get("/")
     def get_root(self) -> dict:
-        logger.info("Received request on the root endpoint")
+        # logger.info("Received request on the root endpoint")
         return {"status": "ok"}
 
 
 ray_app = FastAPIDeployment.bind()
-serve.run(ray_app, route_prefix="/")
+# serve.run(ray_app, blocking=True)
+# Open a browser to test: http://127.0.0.1:8000/
 
-print(requests.get("http://localhost:8000/").json())
+# print(requests.get("http://localhost:8000/").json())
 
 # Docs: https://docs.ray.io/en/latest/serve/develop-and-deploy.html
 

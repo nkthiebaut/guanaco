@@ -7,3 +7,7 @@ Untitled.ipynb
 
 .DS_Store
 *lightning_logs*
+*.ckpt
+__pycache__/
+*.pyc
+*training/data*

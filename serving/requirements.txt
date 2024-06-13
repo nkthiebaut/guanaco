@@ -1,7 +1,7 @@
-fastapi==0.103.0
+fastapi==0.105.0
 loguru==0.7.0
-pydantic==2.3.0
-ray[serve]
-starlette==0.37.2
+pydantic==2.7.3
+starlette==0.27.0
 transformers==4.32.1
-uvicorn==0.23.2
+uvicorn==0.24.0.post1
+torch==2.3.1

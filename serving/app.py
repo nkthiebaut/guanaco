@@ -2,18 +2,21 @@ import sys
 from fastapi import FastAPI, HTTPException
 from loguru import logger
 from pydantic import BaseModel
-from transformers import AutoTokenizer, AutoModelForCausalLM
 
+import torch
+from guanaco.model import Guanaco
 
 logger.remove()
 logger.add(sys.stderr, level="INFO", format="{message}", serialize=False)
 logger.info("Starting API, model version v0...")
 
 
-# Load the BLOOM model and tokenizer
-model_name = "bigscience/bloom-560m"
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-model = AutoModelForCausalLM.from_pretrained(model_name)
+model = Guanaco(vocab_size=256, emb_dim=512, n_heads=1, n_layers=1, max_len=128)
+state_dict = torch.load("./checkpoint.ckpt")["state_dict"]
+state_dict = {k.replace("model.", ""): v for k, v in state_dict.items()}
+model.load_state_dict(state_dict)
+
+logger.info("Model loaded...")
 
 app = FastAPI()
 
@@ -36,9 +39,8 @@ def get_root() -> dict:
 @app.post("/generate", response_model=GeneratedText)
 async def generate_text(request: TextGenerationRequest):
     try:
-        inputs = tokenizer(request.prompt, return_tensors="pt")
-        outputs = model.generate(inputs["input_ids"], max_length=request.max_length)
-        generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+        # TODO: implement the generation logic
+        generated_text = "PLACEHOLDER TEXT"
         logger.info(f"Generated text: {generated_text}")
         return {"generated_text": generated_text}
     except Exception as e:
