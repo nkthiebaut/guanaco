@@ -10,54 +10,6 @@ import torch.nn.functional as F
 from einops import rearrange, reduce
 import lightning as L
 
-device = "cpu"
-if torch.cuda.is_available():
-    device = "cuda"
-elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
-    device = "mps"
-print(f"using device: {device}")
-
-dataset = load_dataset("roneneldan/TinyStories")
-dataset.set_format(type="torch", columns=["text"])
-
-
-context_length = 128
-batch_size = 64
-
-
-def tokenize(text: str) -> list[int]:
-    """Converts a string to a bytes object using UTF-8 encoding."""
-    return [code_unit for code_unit in text.encode("utf-8")]
-
-
-def detokenize(token_ids: list[int]) -> str:
-    """Converts a bytes object to a string using UTF-8 encoding."""
-    return bytes(token_ids).decode("utf-8", errors="replace")
-
-
-def collate_fn(batch):
-    token_ids = [torch.tensor(tokenize(b["text"])[:context_length]) for b in batch]
-    token_ids = pad_sequence(token_ids, batch_first=True)
-    return token_ids
-
-
-train_dataloader = DataLoader(
-    dataset["train"],
-    batch_size=batch_size,
-    shuffle=True,
-    collate_fn=collate_fn,
-    num_workers=4 if torch.cuda.is_available() else 0,
-    persistent_workers=bool(torch.cuda.is_available()),
-    pin_memory=True,
-)
-val_dataloader = DataLoader(
-    dataset["validation"],
-    batch_size=batch_size,
-    shuffle=False,
-    collate_fn=collate_fn,
-)
-print(f"Data sample from dataloader: {next(iter(train_dataloader))[0]}")
-
 
 def compute_complex_rotations(T, C):
     c_values = torch.arange(1, C / 2 + 1)
@@ -192,7 +144,9 @@ class Guanaco(nn.Module):
         self.output_norm = RMSNorm(emb_dim)
         self.output_layer = nn.Linear(emb_dim, vocab_size)
 
-        complex_rotations = compute_complex_rotations(max_len, emb_dim // n_heads)
+        complex_rotations = torch.view_as_real(
+            compute_complex_rotations(max_len, emb_dim // n_heads)
+        )
         self.register_buffer("complex_rotations", complex_rotations)
 
         mask = torch.triu(torch.full((max_len, max_len), float("-inf")), diagonal=1)
@@ -203,7 +157,7 @@ class Guanaco(nn.Module):
         token_ids = token_ids[:, -lookback:].to(torch.long)
         B, T = token_ids.shape
 
-        complex_rotations = self.complex_rotations[:T, :]
+        complex_rotations = torch.view_as_complex(self.complex_rotations[:T, :])
         mask = self.mask[:T, :T]
 
         x = self.embeddings(token_ids)  # (B,T,C)
@@ -257,28 +211,70 @@ class GuanacoModule(L.LightningModule):
         return optimizer
 
 
-model = GuanacoModule(
-    Guanaco(vocab_size=256, emb_dim=512, n_heads=1, n_layers=1, max_len=128),
-    learning_rate=1e-3,
-)
+if __name__ == "__main__":
+    device = "cpu"
+    if torch.cuda.is_available():
+        device = "cuda"
+    elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+        device = "mps"
+    print(f"using device: {device}")
 
-trainer = L.Trainer(max_epochs=2, devices=1)
-# Development trick: use overfit_batches=0.01 to make sure you can overfit small samples
-trainer.fit(model, train_dataloader, val_dataloader)
+    dataset = load_dataset("roneneldan/TinyStories")
+    dataset.set_format(type="torch", columns=["text"])
 
+    context_length = 128
+    batch_size = 64
 
-def generate(model, x: str, n_tokens: int = 5, device="cuda"):
-    """Predict next token with greedy decoding."""
-    x = torch.tensor(tokenize(x)).unsqueeze(0)
-    x = x.to(device)
-    model = model.to(device)
+    def tokenize(text: str) -> list[int]:
+        """Converts a string to a bytes object using UTF-8 encoding."""
+        return [code_unit for code_unit in text.encode("utf-8")]
 
-    for _ in range(n_tokens):
-        pred = model(x)[:, -1, :]  # Logits of the next token prediction (B, V)
-        next_tokens = pred.argmax(dim=-1)  # Next token_id with highest proba (B)
-        next_tokens = rearrange(next_tokens, "B -> B 1")
-        x = torch.cat((x, next_tokens), dim=1)
-    return "".join(detokenize(x[0].tolist()))
+    def detokenize(token_ids: list[int]) -> str:
+        """Converts a bytes object to a string using UTF-8 encoding."""
+        return bytes(token_ids).decode("utf-8", errors="replace")
 
+    def collate_fn(batch):
+        token_ids = [torch.tensor(tokenize(b["text"])[:context_length]) for b in batch]
+        token_ids = pad_sequence(token_ids, batch_first=True)
+        return token_ids
 
-generate(model, "Once upon a time", n_tokens=200)
+    train_dataloader = DataLoader(
+        dataset["train"],
+        batch_size=batch_size,
+        shuffle=True,
+        collate_fn=collate_fn,
+        num_workers=4 if torch.cuda.is_available() else 0,
+        persistent_workers=bool(torch.cuda.is_available()),
+        pin_memory=True,
+    )
+    val_dataloader = DataLoader(
+        dataset["validation"],
+        batch_size=batch_size,
+        shuffle=False,
+        collate_fn=collate_fn,
+    )
+    print(f"Data sample from dataloader: {next(iter(train_dataloader))[0]}")
+
+    model = GuanacoModule(
+        Guanaco(vocab_size=256, emb_dim=512, n_heads=1, n_layers=1, max_len=128),
+        learning_rate=1e-3,
+    )
+
+    trainer = L.Trainer(max_epochs=2, devices=1)
+    # Development trick: use overfit_batches=0.01 to make sure you can overfit small samples
+    trainer.fit(model, train_dataloader, val_dataloader)
+
+    def generate(model, x: str, n_tokens: int = 5, device="cuda"):
+        """Predict next token with greedy decoding."""
+        x = torch.tensor(tokenize(x)).unsqueeze(0)
+        x = x.to(device)
+        model = model.to(device)
+
+        for _ in range(n_tokens):
+            pred = model(x)[:, -1, :]  # Logits of the next token prediction (B, V)
+            next_tokens = pred.argmax(dim=-1)  # Next token_id with highest proba (B)
+            next_tokens = rearrange(next_tokens, "B -> B 1")
+            x = torch.cat((x, next_tokens), dim=1)
+        return "".join(detokenize(x[0].tolist()))
+
+    generate(model, "Once upon a time", n_tokens=200)

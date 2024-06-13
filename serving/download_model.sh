@@ -1,0 +1,1 @@
+gcloud storage cp gs://model-repo-msds-631-02/guanaco-runs/TorchTrainer_2024-06-11_10-37-52/TorchTrainer_55666_00000_0_2024-06-11_10-37-54/checkpoint_000001/checkpoint.ckpt .
