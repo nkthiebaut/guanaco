@@ -2,7 +2,7 @@ import sys
 from fastapi import FastAPI, HTTPException
 from loguru import logger
 from pydantic import BaseModel
-
+from einops import rearrange, reduce
 import torch
 from guanaco.model import Guanaco
 
@@ -36,11 +36,34 @@ def get_root() -> dict:
     return {"status": "ok"}
 
 
+def tokenize(text: str) -> list[int]:
+    """Converts a string to a bytes object using UTF-8 encoding."""
+    return [code_unit for code_unit in text.encode("utf-8")]
+
+
+def detokenize(token_ids: list[int]) -> str:
+    """Converts a bytes object to a string using UTF-8 encoding."""
+    return bytes(token_ids).decode("utf-8", errors="replace")
+
+
+def generate(model, x: str, n_tokens: int = 5, device="cpu"):
+    """Predict next token with greedy decoding."""
+    x = torch.tensor(tokenize(x)).unsqueeze(0)
+    x = x.to(device)
+    model = model.to(device)
+
+    for _ in range(n_tokens):
+        pred = model(x)[:, -1, :]  # Logits of the next token prediction (B, V)
+        next_tokens = pred.argmax(dim=-1)  # Next token_id with highest proba (B)
+        next_tokens = rearrange(next_tokens, "B -> B 1")
+        x = torch.cat((x, next_tokens), dim=1)
+    return "".join(detokenize(x[0].tolist()))
+
+
 @app.post("/generate", response_model=GeneratedText)
 async def generate_text(request: TextGenerationRequest):
     try:
-        # TODO: implement the generation logic
-        generated_text = "PLACEHOLDER TEXT"
+        generated_text = generate(model, request.prompt, request.max_length)
         logger.info(f"Generated text: {generated_text}")
         return {"generated_text": generated_text}
     except Exception as e:
@@ -50,4 +73,4 @@ async def generate_text(request: TextGenerationRequest):
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("app:app", host="0.0.0.0", port=8001, reload=True)
